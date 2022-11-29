@@ -45,6 +45,11 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -81,6 +86,10 @@ public class MainActivity extends AppCompatActivity {
                 return "STILL";
             case DetectedActivity.WALKING:
                 return "WALKING";
+            case DetectedActivity.IN_VEHICLE:
+                return "IN_VEHICLE";
+            case DetectedActivity.RUNNING:
+                return "RUNNING";
             default:
                 return "UNKNOWN";
         }
@@ -114,11 +123,19 @@ public class MainActivity extends AppCompatActivity {
 
         // TODO: Add activity transitions to track.
         activityTransitionList.add(new ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.WALKING)
+                .setActivityType(DetectedActivity.IN_VEHICLE)
                 .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
                 .build());
         activityTransitionList.add(new ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.WALKING)
+                .setActivityType(DetectedActivity.IN_VEHICLE)
+                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
+                .build());
+        activityTransitionList.add(new ActivityTransition.Builder()
+                .setActivityType(DetectedActivity.RUNNING)
+                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                .build());
+        activityTransitionList.add(new ActivityTransition.Builder()
+                .setActivityType(DetectedActivity.RUNNING)
                 .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
                 .build());
         activityTransitionList.add(new ActivityTransition.Builder()
@@ -151,15 +168,15 @@ public class MainActivity extends AppCompatActivity {
         registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITIONS_RECEIVER_ACTION));
     }
 
-    @Override
-    protected void onPause() {
-
-        // TODO: Disable activity transitions when user leaves the app.
-        if (activityTrackingEnabled) {
-            disableActivityTransitions();
-        }
-        super.onPause();
-    }
+//    @Override
+//    protected void onPause() {
+//
+//        // TODO: Disable activity transitions when user leaves the app.
+//        if (activityTrackingEnabled) {
+//            disableActivityTransitions();
+//        }
+//        super.onPause();
+//    }
 
 
     @Override
@@ -285,8 +302,32 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void printToScreen(@NonNull String message) {
+        writeToSD(message);
         mLogFragment.getLogView().println(message);
         Log.d(TAG, message);
+    }
+
+    private void writeToSD(@NonNull String message) {
+        File root = android.os.Environment.getExternalStorageDirectory();
+        Log.d(TAG, "External file system root: "+root);
+        File dir = new File (root.getAbsolutePath() + "/download");
+        File file = new File(dir, "ARLog.txt");
+
+        try {
+            FileOutputStream f = new FileOutputStream(file, true);
+            PrintWriter pw = new PrintWriter(f);
+            pw.println(message);
+            pw.flush();
+            pw.close();
+            f.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            Log.i(TAG, "******* File not found. Did you" +
+                    " add a WRITE_EXTERNAL_STORAGE permission to the   manifest?");
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.d(TAG, "File written to " + file);
+        }
     }
 
     /**
